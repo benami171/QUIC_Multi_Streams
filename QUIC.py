@@ -6,6 +6,8 @@ from enum import IntEnum
 from typing import Dict, List, Tuple
 from dataclasses import dataclass
 
+from numpy.distutils.conv_template import header
+
 
 class FLAGS(IntEnum):
     SYN = 1
@@ -49,7 +51,7 @@ class QUIC_CONNECTION:
 
         received_packet = QUIC_PACKET.deserialize_data(received_data)[0]
         if received_packet.packet_flag == FLAGS.SYN:
-            print("Received SYN packet from client in address: {address}")
+            print(f"Received SYN packet from client in address: {address}")
             received_packet.packet_flag = FLAGS.SYN_ACK
             self.sock.sendto(received_packet.serialize_data(), address)
         else:
@@ -102,18 +104,36 @@ class QUIC_PACKET:
     @classmethod
     def deserialize_data(cls, data: bytes) -> Tuple['QUIC_PACKET', List['QUIC_FRAME']]:
 
-        received_data = struct.unpack('!BIQ',data[:cls.HEADER_LENGTH])
-        flag, packet_id, data_size = received_data
-        return
+        packet_header = struct.unpack('!BIQ',data[:cls.HEADER_LENGTH])
+        flag, packet_id, data_size = packet_header
+        packet = QUIC_PACKET(flag)
+        packet.packet_ID = packet_id
+        packet.packet_data = bytearray(data[cls.HEADER_LENGTH:])
+
+        packet_frames = []
+        frame_position_offset = 0
+        while frame_position_offset < len(packet.packet_data):
+            frame_header = struct.unpack('!IIQ', packet.packet_data[frame_position_offset:frame_position_offset+cls.FRAME_LENGTH])
+            stream_id, position_in_stream, frame_size = frame_header
+            frame_position_offset += cls.FRAME_LENGTH # skip to the next frame by frame length
+            frame_data = packet.packet_data[frame_position_offset:frame_position_offset+frame_size]
+            packet_frames.append(QUIC_FRAME(stream_id, position_in_stream, frame_data))
+            frame_position_offset += frame_size
+
+        return packet, packet_frames
 
     def serialize_data(self) -> bytes:
-
-        pass
+        packet_header = struct.pack('!BIQ', self.packet_flag, self.packet_ID, len(self.packet_data))
+        return packet_header + self.packet_data
 
 
 
 class QUIC_FRAME:
 
-    def __init__(self, stream_id: int, position_in_stream: int):
+    def __init__(self, stream_id: int, position_in_stream: int, data: bytes):
         self.stream_id = 0
         self.position_in_stream = 0
+        self.frame_data = data
+
+    def __len__(self):
+        return len(self.frame_data)
