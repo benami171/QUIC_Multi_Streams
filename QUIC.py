@@ -1,8 +1,11 @@
+import random
 import socket
+import math
 import struct
 import time
 import asyncio
 from enum import IntEnum
+from random import randint
 from typing import Dict, List, Tuple
 from dataclasses import dataclass
 
@@ -14,7 +17,7 @@ class FLAGS(IntEnum):
     SYN_ACK = 2
     ACK = 3
     DATA_PACKET = 4
-    END = 5
+    END_OF_DATA = 5
     FIN = 6
     FIRST_PACKET = 7
     LAST_PACKET = 8
@@ -75,9 +78,103 @@ class QUIC_CONNECTION:
             raise Exception("Connection failed")
 
 
+    async def send_data(self, list_of_files: List[bytes]) -> None:
+        for i,file in enumerate(list_of_files):
+            self.out_streams[i+1] = file
+
+        await self.send_to_streams()
+        print("Data sent successfully")
+        self.out_streams.clear()
+        final_packet = QUIC_PACKET(FLAGS.FIN)
+        self.sock.sendto(final_packet.serialize_data(), (self.host_address, self.port_number))
+
+    async def send_to_streams(self) -> None:
+
+        await asyncio.gather(*(self.send_stream_data(stream_id) for stream_id in self.out_streams))
 
 
-class Stream_Statistics:
+    async def send_stream_data(self, stream_id: int):
+        """
+        1. get the data from each stream by stream_id
+        2. generate random frame size and calculate number of frames needed.
+        3. calculate frames per packet
+        4. calculate number of packets needed.
+        5. divide the data to frames and add the frames to the packet.
+        6. send the frames on the stream.
+        """
+        data_from_stream = self.out_streams[stream_id]
+
+        # generate random frame size
+        frame_size = int(random.uniform(1000, 2000))
+        frame_payload_size = frame_size - QUIC_PACKET.FRAME_LENGTH
+        needed_frames_amount = math.ceil(len(data_from_stream) / frame_payload_size)
+        frames_per_packet = math.ceil(QUIC_PACKET.Max_size / frame_size)
+        needed_packets_amount = math.ceil(needed_frames_amount / frames_per_packet)
+
+        for i in range(needed_packets_amount):
+            if i==0:
+                start_packet = QUIC_PACKET(FLAGS.FIRST_PACKET)
+            elif i == needed_packets_amount-1:
+                end_packet = QUIC_PACKET(FLAGS.LAST_PACKET)
+            else:
+                packet = QUIC_PACKET(FLAGS.DATA_PACKET)
+                for frame_offset in range(frames_per_packet):
+                    if frame_offset == frames_per_packet-1:
+                        awaiting_data = data_from_stream[frame_offset*frame_payload_size:]
+                        packet.add_frame(stream_id,frame_offset,awaiting_data)
+                    else:
+                        awaiting_data = data_from_stream[frame_offset*frame_payload_size:(frame_offset+1)*frame_payload_size]
+                        packet.add_frame(stream_id,frame_offset,awaiting_data)
+                self.sock.sendto(packet.serialize_data(), (self.host_address, self.port_number))
+                await asyncio.sleep(0.001)
+
+
+    async def receive_data(self) -> List[bytes]:
+        """
+        1. receive data from the socket and divide it into packet and frames
+        2. if the packet is not SYN/ACK/SYN_ACK/FIN start measuring time
+        3. if the stream_id is not in the streams stats dictionary,add it
+        :return:
+        """
+        received_data, address = self.sock.recvfrom(QUIC_PACKET.Max_size)
+        received_packet, received_frames = QUIC_PACKET.deserialize_data(received_data)
+
+        if received_packet.packet_flag != (FLAGS.SYN or FLAGS.ACK or FLAGS.SYN_ACK or FLAGS.FIN):
+            if received_packet.packet_flag == FLAGS.FIRST_PACKET:
+                self.stream_stats[received_frames[0].stream_id] = Stats(received_frames[0].stream_id,0,0,0,time.time())
+            if received_packet.packet_flag == FLAGS.LAST_PACKET:
+                end = time.time()
+                self.stream_stats[received_frames[0].stream_id].time = end - self.stream_stats[received_frames[0].stream_id].time
+        if received_packet.packet_flag == FLAGS.END_OF_DATA:
+            end = time.time()
+            self.stream_stats[0].time = end - self.stream_stats[0].time
+            self.print_stats()
+
+        self.stream_stats[received_frames[0].stream_id].packets_amount += 1
+        self.stream_stats[received_frames[0].stream_id].bytes_amount += len(received_data)
+        self.stream_stats[0].packets_amount += 1
+        self.stream_stats[0].bytes_amount += len(received_data)
+
+
+        for frame in frames:
+
+
+    def print_stats(self):
+        for stream_id, stats in self.stream_stats.items():
+            print(f"Stream ID: {stream_id}")
+            print(f"Number of packets: {stats.packets_amount}")
+            print(f"Number of frames: {stats.frames_amount}")
+            print(f"Total bytes: {stats.bytes_amount}")
+            print(f"Time: {stats.time}")
+            print("\n")
+
+class Stats:
+    def __init__(self, stream_id: int, packets_amount: int, frames_amount: int, bytes_amount: int, time: float):
+        self.stream_id = stream_id
+        self.packets_amount = packets_amount
+        self.frames_amount = frames_amount
+        self.bytes_amount = bytes_amount
+        self.time = time
     """
     This class represents the statistics for a stream.
     """
