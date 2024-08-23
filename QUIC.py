@@ -104,7 +104,6 @@ class QUIC_PACKET:
 
         received_data = struct.unpack('!BIQ',data[:cls.HEADER_LENGTH])
         flag, packet_id, data_size = received_data
-
         return
 
     def serialize_data(self) -> bytes:
