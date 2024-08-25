@@ -32,7 +32,6 @@ async def receiver() -> None:
         # save the file data to a file
         for i, file in enumerate(file_data):
             with open(f"file_{i}.txt", "wb") as f:
-                print(" WRITING TO FILE ")
                 f.write(file)
     conn.end_communication()
 

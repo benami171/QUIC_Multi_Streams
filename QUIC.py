@@ -106,9 +106,12 @@ class QUIC_CONNECTION:
         # calculate the frame payload size (without the header)
         frame_payload_size = frame_size - QUIC_PACKET.FRAME_LENGTH
         # calculate the number of frames per packet
-        frames_per_packet = math.ceil(QUIC_PACKET.Max_size / frame_size)
+        frames_per_packet = math.floor(QUIC_PACKET.MAX_DATA_SIZE/ frame_size)
         needed_frames_amount = math.ceil(len(data_from_stream) / frame_payload_size)
+        packet_payload_size = frames_per_packet * frame_payload_size
         needed_packets_amount = math.ceil(needed_frames_amount / frames_per_packet)
+        current_frame = 0
+
 
         for i in range(needed_packets_amount):
             #
@@ -120,14 +123,16 @@ class QUIC_CONNECTION:
             else:
                 packet = QUIC_PACKET(FLAGS.DATA_PACKET)
 
-            print("frames_per_packet", frames_per_packet)
+            bytes_added_until_now = i * packet_payload_size
             for frame_offset in range(frames_per_packet):
-                if frame_offset == frames_per_packet - 1:
-                    awaiting_data = data_from_stream[frame_offset * frame_payload_size:]
-                    print("last frame on packet")
+                start_index = bytes_added_until_now + frame_offset * frame_payload_size
+                if current_frame == needed_frames_amount - 1:
+                    end_index = start_index + min((packet_payload_size - (frame_offset-1) * frame_payload_size), frame_payload_size)
                 else:
-                    awaiting_data = data_from_stream[
-                                    frame_offset * frame_payload_size:(frame_offset + 1) * frame_payload_size]
+                    end_index = start_index + frame_payload_size
+                awaiting_data = data_from_stream[start_index:end_index]
+                current_frame += 1
+
                 packet.link_frame(stream_id, frame_offset, awaiting_data)
             self.sock.sendto(packet.serialize_data(), (self.host_address, self.port))
             await asyncio.sleep(0.001)
@@ -194,14 +199,37 @@ class QUIC_CONNECTION:
         self.in_streams.clear()
         return received_files
 
+    # def print_stats(self) -> None:
+    #     for stream_id, stats in self.streams_stats.items():
+    #         print(f"Stream ID: {stream_id}")
+    #         print(f"Number of packets: {stats.packets_amount}")
+    #         print(f"Number of frames: {stats.frames_amount}")
+    #         print(f"Total bytes: {stats.total_bytes_amount}")
+    #         print(f"Time: {stats.time}")
+    #         print("\n")
     def print_stats(self) -> None:
-        for stream_id, stats in self.streams_stats.items():
-            print(f"Stream ID: {stream_id}")
-            print(f"Number of packets: {stats.packets_amount}")
-            print(f"Number of frames: {stats.frames_amount}")
-            print(f"Total bytes: {stats.total_bytes_amount}")
-            print(f"Time: {stats.time}")
-            print("\n")
+        """
+        Display the statistics of the connection as requested in the assignment.
+        """
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Statistics~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
+        # d part
+        avg_data_rate = self.connection_stats[0].total_bytes_amount / self.connection_stats[0].time
+        print(f"\t{'Average data rate':<25}: {avg_data_rate:,} bytes per second")
+        # e part
+        avg_packet_rate = self.connection_stats[0].packets_amount / self.connection_stats[0].time
+        print(f"\t{'Average packet rate':<25}: {avg_packet_rate:,} packets per second")
+        print("\nEach stream statistics:")
+        for i in self.streams_stats:
+            print(f"\tStream {self.streams_stats[i].stream_id:,} statistics:")
+            print(f"\t\t{'Number of packets':<20}: {self.streams_stats[i].packets_amount:,}")
+            print(f"\t\t{'Number of frames':<20}: {self.streams_stats[i].frames_amount:,}")
+            print(f"\t\t{'Number of bytes':<20}: {self.streams_stats[i].total_bytes_amount:,}")
+            print(f"\t\t{'Time':<20}: {self.streams_stats[i].time:,} seconds")
+            # c part
+            avg_data_rate = self.streams_stats[i].total_bytes_amount / self.streams_stats[i].time
+            print(f"\t\t{'Average data rate':<20}: {avg_data_rate:,} bytes per second")
+        print("\n~~~~~~~~~~~~~~~~~~~~~~~~~End of statistics~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        # TODO: show graphs of d and e on different number of streams
 
     # will be used when we get FIN packet.
     def terminate_connection(self) -> None:
@@ -230,7 +258,7 @@ class Stats:
 
 class QUIC_PACKET:
     packet_id_counter = 0
-    Max_size = 65535
+    Max_size = 20000
     HEADER_LENGTH = struct.calcsize('!BIQ')
     FRAME_LENGTH = struct.calcsize('!IIQ')
     MAX_DATA_SIZE = Max_size - HEADER_LENGTH
