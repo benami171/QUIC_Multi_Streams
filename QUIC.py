@@ -84,20 +84,14 @@ class QUIC_CONNECTION:
         await self.send_to_streams()
         print("Data sent successfully")
         self.out_streams.clear()
-        final_packet = QUIC_PACKET(FLAGS.FIN)
+        final_packet = QUIC_PACKET(FLAGS.END_OF_DATA)
         self.sock.sendto(final_packet.serialize_data(), (self.host_address, self.port))
 
     async def send_to_streams(self) -> None:
-        # generate random frame size
-        frame_size = int(random.uniform(1000, 2000))
-        # calculate the frame payload size (without the header)
-        frame_payload_size = frame_size - QUIC_PACKET.FRAME_LENGTH
-        # calculate the number of frames per packet
-        frames_per_packet = math.ceil(QUIC_PACKET.Max_size / frame_size)
-        await asyncio.gather(*(self.send_stream_data(stream_id, frame_payload_size, frames_per_packet) for stream_id in
-                               self.out_streams))
 
-    async def send_stream_data(self, stream_id: int, frame_payload_size: int, frames_per_packet: int) -> None:
+        await asyncio.gather(*(self.send_stream_data(stream_id) for stream_id in self.out_streams))
+
+    async def send_stream_data(self, stream_id: int) -> None:
         """
         1. get the data from each stream by stream_id
         2. generate random frame size and calculate number of frames needed.
@@ -107,6 +101,12 @@ class QUIC_CONNECTION:
         6. send the frames on the stream.
         """
         data_from_stream = self.out_streams[stream_id]
+        # generate random frame size
+        frame_size = int(random.uniform(1000, 2000))
+        # calculate the frame payload size (without the header)
+        frame_payload_size = frame_size - QUIC_PACKET.FRAME_LENGTH
+        # calculate the number of frames per packet
+        frames_per_packet = math.ceil(QUIC_PACKET.Max_size / frame_size)
         needed_frames_amount = math.ceil(len(data_from_stream) / frame_payload_size)
         needed_packets_amount = math.ceil(needed_frames_amount / frames_per_packet)
 
@@ -114,18 +114,21 @@ class QUIC_CONNECTION:
             #
             if i == 0:
                 packet = QUIC_PACKET(FLAGS.FIRST_PACKET)
+
             elif i == needed_packets_amount - 1:
                 packet = QUIC_PACKET(FLAGS.LAST_PACKET)
             else:
                 packet = QUIC_PACKET(FLAGS.DATA_PACKET)
-                for frame_offset in range(frames_per_packet):
-                    if frame_offset == frames_per_packet - 1:
-                        awaiting_data = data_from_stream[frame_offset * frame_payload_size:]
-                        packet.link_frame(stream_id, frame_offset, awaiting_data)
-                    else:
-                        awaiting_data = data_from_stream[
-                                        frame_offset * frame_payload_size:(frame_offset + 1) * frame_payload_size]
-                        packet.link_frame(stream_id, frame_offset, awaiting_data)
+
+            print("frames_per_packet", frames_per_packet)
+            for frame_offset in range(frames_per_packet):
+                if frame_offset == frames_per_packet - 1:
+                    awaiting_data = data_from_stream[frame_offset * frame_payload_size:]
+                    print("last frame on packet")
+                else:
+                    awaiting_data = data_from_stream[
+                                    frame_offset * frame_payload_size:(frame_offset + 1) * frame_payload_size]
+                packet.link_frame(stream_id, frame_offset, awaiting_data)
             self.sock.sendto(packet.serialize_data(), (self.host_address, self.port))
             await asyncio.sleep(0.001)
 
@@ -137,27 +140,25 @@ class QUIC_CONNECTION:
         :return:
         """
         frames_received_counter = 0
-        received_packets_amount = 0
-        received_bytes_amount = 0
         while True:
             received_data, address = self.sock.recvfrom(QUIC_PACKET.Max_size)
             received_packet, received_frames = QUIC_PACKET.deserialize_data(received_data)
 
-            if received_packet.packet_flag != (FLAGS.SYN or
-                                               FLAGS.ACK or
-                                               FLAGS.SYN_ACK or
-                                               FLAGS.FIN):
+            if received_packet.packet_flag not in (FLAGS.SYN ,FLAGS.ACK,
+                                                    FLAGS.SYN_ACK, FLAGS.FIN):
 
                 frames_received_counter += len(received_frames)
                 # GOT THE FIRST PACKET OF THE SPECIFIC STREAM, START MEASURING TIME
+
+
                 if received_packet.packet_flag == FLAGS.FIRST_PACKET:
                     if received_frames[0].stream_id not in self.streams_stats:
                         self.streams_stats[received_frames[0].stream_id] = Stats(received_frames[0].stream_id, 0, 0, 0,
-                                                                             time.time())
+                                                                                 time.time())
                     if OVERALL_DATA not in self.connection_stats:
                         self.connection_stats[OVERALL_DATA] = Stats(0, 0, 0, 0, time.time())
 
-                if len(received_frames) > 0:
+                if len(received_frames) != 0:
                     self.streams_stats[received_frames[0].stream_id].frames_amount += len(received_frames)
                     self.connection_stats[OVERALL_DATA].frames_amount += len(received_frames)
                 # GOT THE LAST PACKET OF THE SPECIFIC STREAM, MEASURING END TIME
@@ -171,7 +172,7 @@ class QUIC_CONNECTION:
                     self.print_stats()
                     break
 
-
+                # UPDATE STATS
                 self.streams_stats[received_frames[0].stream_id].packets_amount += 1
                 self.streams_stats[received_frames[0].stream_id].total_bytes_amount += len(received_data)
                 self.connection_stats[OVERALL_DATA].packets_amount += 1
@@ -193,7 +194,6 @@ class QUIC_CONNECTION:
         self.in_streams.clear()
         return received_files
 
-
     def print_stats(self) -> None:
         for stream_id, stats in self.streams_stats.items():
             print(f"Stream ID: {stream_id}")
@@ -203,20 +203,18 @@ class QUIC_CONNECTION:
             print(f"Time: {stats.time}")
             print("\n")
 
-
-
     # will be used when we get FIN packet.
     def terminate_connection(self) -> None:
-        if self.is_closed:
-            return
-        else:
-            print(f"Got FIN packet, terminating connection")
-            self.sock.close()
-            self.is_closed = True
 
+        print(f"Got FIN packet, terminating connection")
+        self.sock.close()
+        self.is_closed = True
 
     # send FIN packet to the other side.
     def end_communication(self):
+        if self.is_closed:
+            return
+
         self.sock.sendto(QUIC_PACKET(FLAGS.FIN).serialize_data(), (self.host_address, self.port))
         self.terminate_connection()
 
@@ -250,17 +248,18 @@ class QUIC_PACKET:
         flag, packet_id, data_size = packet_header
         packet = QUIC_PACKET(flag)
         packet.packet_ID = packet_id
-        packet.packet_data = bytearray(data[cls.HEADER_LENGTH:])
+        packet.packet_data = bytearray(data[cls.HEADER_LENGTH: cls.HEADER_LENGTH + data_size])
 
         packet_frames = []
         frame_position_offset = 0
         while frame_position_offset < len(packet.packet_data):
-            frame_header = struct.unpack('!IIQ', packet.packet_data[
-                                                 frame_position_offset:frame_position_offset + cls.FRAME_LENGTH])
+            frame_header = struct.unpack('!IIQ',
+                        packet.packet_data[frame_position_offset:frame_position_offset + cls.FRAME_LENGTH])
             stream_id, position_in_stream, frame_size = frame_header
             frame_position_offset += cls.FRAME_LENGTH  # skip to the next frame by frame length
             frame_data = packet.packet_data[frame_position_offset:frame_position_offset + frame_size]
-            packet_frames.append(QUIC_FRAME(stream_id, position_in_stream, frame_data))
+            frame_to_add = QUIC_FRAME(stream_id, position_in_stream, frame_data)
+            packet_frames.append(frame_to_add)
             frame_position_offset += frame_size
 
         return packet, packet_frames
@@ -269,8 +268,8 @@ class QUIC_PACKET:
         packet_header = struct.pack('!BIQ', self.packet_flag, self.packet_ID, len(self.packet_data))
         return packet_header + self.packet_data
 
-    def link_frame(self, stream_id: int, position_in_stream: int, data: bytes) -> None:
-        frame_to_link = struct.pack('!IIQ', stream_id, position_in_stream, len(data))
+    def link_frame(self, stream_id: int, position_in_stream: int, data: bytes):
+        frame_to_link = struct.pack('!IIQ', stream_id, position_in_stream, len(data)) + data
         if len(self.packet_data) + len(frame_to_link) > QUIC_PACKET.MAX_DATA_SIZE:
             raise Exception("Frame size is too large")
         self.packet_data += frame_to_link
@@ -279,8 +278,8 @@ class QUIC_PACKET:
 class QUIC_FRAME:
 
     def __init__(self, stream_id: int, position_in_stream: int, data: bytes):
-        self.stream_id = 0
-        self.position_in_stream = 0
+        self.stream_id = stream_id
+        self.position_in_stream = position_in_stream
         self.frame_data = data
 
     def __len__(self):
