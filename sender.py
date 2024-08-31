@@ -23,24 +23,32 @@
 
 import asyncio
 
-from QUIC import *
+import asyncio
+from QUIC import QUIC_CONNECTION
 
-HOST = '127.0.0.1'
-PORT = 4422
+LOCAL_ADDRESS = '127.0.0.1'
+TARGET_PORT = 9191
 
 
-async def sender():
-    with open("random_data.txt", "r") as f:
-        file_data = f.read()
+async def transmit_data():
+    conn = QUIC_CONNECTION()
+    conn.connect_to(LOCAL_ADDRESS, TARGET_PORT)
 
-        conn = QUIC_CONNECTION()
+    with open("random_data_file.txt", "rb") as file:
+        content = file.read()
 
-        conn.connect_to(HOST, PORT)
-        await conn.send_data([file_data.encode()]*3)
-        # sleep for two seconds
-        await asyncio.sleep(0.01)
-        conn.end_communication()
+    num_of_streams = int(input("Enter the desired number of streams: "))
+    payload = [content] * num_of_streams
+    await conn.send_data(payload)
+
+    # Adding a small delay before closing the connection
+    await asyncio.sleep(0.01)
+    conn.end_communication()
+
+
+def main():
+    asyncio.run(transmit_data())
 
 
 if __name__ == '__main__':
-    asyncio.run(sender())
+    main()

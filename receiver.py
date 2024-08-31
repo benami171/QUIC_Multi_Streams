@@ -17,24 +17,34 @@
 # if __name__ == "__main__":
 #     asyncio.run(start_receiver())
 
-from QUIC import *
+import asyncio
+from QUIC import QUIC_CONNECTION
 
-HOST = '0.0.0.0'  # listen on all interfaces
-PORT = 4422
+BIND_ADDRESS = '0.0.0.0'
+LISTEN_PORT = 9191
 
 
-async def receiver() -> None:
+async def accept_data():
     conn = QUIC_CONNECTION()
-    conn.listen_incoming_connections(HOST, PORT)
+    conn.listen_incoming_connections(BIND_ADDRESS, LISTEN_PORT)
 
-    # Keep receiving file data until the connection is closed
-    while (file_data := await conn.receive_data()) is not None:
-        # save the file data to a file
-        for i, file in enumerate(file_data):
-            with open(f"file_{i}.txt", "wb") as f:
-                f.write(file)
+    while True:
+        data_batch = await conn.receive_data()
+        if data_batch is None:
+            break
+
+        for index, data_chunk in enumerate(data_batch):
+            file_name = f"output_f{index}.txt"
+            with open(file_name, "wb") as output_file:
+                output_file.write(data_chunk)
+
     conn.end_communication()
 
 
+def main():
+    asyncio.run(accept_data())
+
+
 if __name__ == '__main__':
-    asyncio.run(receiver())
+    main()
+
