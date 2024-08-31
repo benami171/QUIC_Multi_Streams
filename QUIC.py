@@ -73,7 +73,7 @@ class QUIC_CONNECTION:
         received_packet = QUIC_PACKET.deserialize_data(received_data)[0]
 
         if received_packet.packet_flag == FLAGS.SYN_ACK:
-            print("Received SYN_ACK packet from server")
+            print("GOT SYN_ACK FROM THE SERVER")
         else:
             raise Exception("Connection failed")
 
