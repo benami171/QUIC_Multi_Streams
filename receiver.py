@@ -29,10 +29,14 @@ async def accept_data():
     conn.listen_incoming_connections(BIND_ADDRESS, LISTEN_PORT)
 
     while True:
+        print("Receiver waiting for incoming data")
         data_batch = await conn.receive_data()
         if data_batch is None:
             break
 
+        """
+        taking the data_batch and writing each data chunk to a separate file
+        """
         for index, data_chunk in enumerate(data_batch):
             file_name = f"output_f{index}.txt"
             with open(file_name, "wb") as output_file:

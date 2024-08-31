@@ -199,37 +199,39 @@ class QUIC_CONNECTION:
         self.in_streams.clear()
         return received_files
 
-    # def print_stats(self) -> None:
-    #     for stream_id, stats in self.streams_stats.items():
-    #         print(f"Stream ID: {stream_id}")
-    #         print(f"Number of packets: {stats.packets_amount}")
-    #         print(f"Number of frames: {stats.frames_amount}")
-    #         print(f"Total bytes: {stats.total_bytes_amount}")
-    #         print(f"Time: {stats.time}")
-    #         print("\n")
+
     def print_stats(self) -> None:
-        """
-        Display the statistics of the connection as requested in the assignment.
-        """
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Statistics~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
-        # d part
-        avg_data_rate = self.connection_stats[0].total_bytes_amount / self.connection_stats[0].time
-        print(f"\t{'Average data rate':<25}: {avg_data_rate:,} bytes per second")
-        # e part
-        avg_packet_rate = self.connection_stats[0].packets_amount / self.connection_stats[0].time
-        print(f"\t{'Average packet rate':<25}: {avg_packet_rate:,} packets per second")
-        print("\nEach stream statistics:")
-        for i in self.streams_stats:
-            print(f"\tStream {self.streams_stats[i].stream_id:,} statistics:")
-            print(f"\t\t{'Number of packets':<20}: {self.streams_stats[i].packets_amount:,}")
-            print(f"\t\t{'Number of frames':<20}: {self.streams_stats[i].frames_amount:,}")
-            print(f"\t\t{'Number of bytes':<20}: {self.streams_stats[i].total_bytes_amount:,}")
-            print(f"\t\t{'Time':<20}: {self.streams_stats[i].time:,} seconds")
-            # c part
-            avg_data_rate = self.streams_stats[i].total_bytes_amount / self.streams_stats[i].time
-            print(f"\t\t{'Average data rate':<20}: {avg_data_rate:,} bytes per second")
-        print("\n~~~~~~~~~~~~~~~~~~~~~~~~~End of statistics~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        # TODO: show graphs of d and e on different number of streams
+        print("********** Overall Connection Statistics **********\n")
+
+        # Overall statistics
+        total_bytes = self.connection_stats[OVERALL_DATA].total_bytes_amount
+        total_packets = self.connection_stats[OVERALL_DATA].packets_amount
+        total_time = self.connection_stats[OVERALL_DATA].time
+
+        overall_avg_bytes_per_sec = total_bytes / total_time
+        overall_avg_packets_per_sec = total_packets / total_time
+
+        print(f"Overall average bytes per second: {overall_avg_bytes_per_sec:.2f} bytes/sec")
+        print(f"Overall average packets per second: {overall_avg_packets_per_sec:.2f} packets/sec\n")
+
+        # Per stream statistics
+        for stream_id, stats in self.streams_stats.items():
+            stream_total_bytes = stats.total_bytes_amount
+            stream_total_packets = stats.packets_amount
+            stream_time = stats.time
+
+            avg_bytes_per_sec = stream_total_bytes / stream_time
+            avg_packets_per_sec = stream_total_packets / stream_time
+
+            print(f"Stream ID: {stream_id}")
+            print(f"  Total bytes: {stream_total_bytes} bytes")
+            print(f"  Total packets: {stream_total_packets} packets")
+            print(f"  Average bytes per second: {avg_bytes_per_sec:.2f} bytes/sec")
+            print(f"  Average packets per second: {avg_packets_per_sec:.2f} packets/sec")
+            print()
+
+        print("********** End of Statistics **********")
+
 
     # will be used when we get FIN packet.
     def terminate_connection(self) -> None:

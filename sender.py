@@ -22,8 +22,6 @@
 #     asyncio.run(start_sender())
 
 import asyncio
-
-import asyncio
 from QUIC import QUIC_CONNECTION
 
 LOCAL_ADDRESS = '127.0.0.1'
@@ -31,6 +29,12 @@ TARGET_PORT = 9191
 
 
 async def transmit_data():
+    """
+    This method is used to send data to the receiver. The data is read from a file and sent to the receiver.
+    The method is defined as an asynchronous method to allow for the use of the await keyword,
+    which is used to wait for the completion of the send_data method.
+    """
+
     conn = QUIC_CONNECTION()
     conn.connect_to(LOCAL_ADDRESS, TARGET_PORT)
 
