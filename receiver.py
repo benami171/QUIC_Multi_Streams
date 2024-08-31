@@ -29,7 +29,6 @@ async def accept_data():
     conn.listen_incoming_connections(BIND_ADDRESS, LISTEN_PORT)
 
     while True:
-        print("Receiver waiting for incoming data")
         data_batch = await conn.receive_data()
         if data_batch is None:
             break
