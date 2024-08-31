@@ -23,11 +23,10 @@
 
 import asyncio
 from QUIC import QUIC_CONNECTION
-from QUIC_TEST import FILE_TO_SEND
 
 LOCAL_ADDRESS = '127.0.0.1'
 TARGET_PORT = 9191
-
+FILE_TO_SEND = "random_data_file.txt"
 
 async def transmit_data(file_to_send: str, num_of_streams: int):
     """
@@ -39,7 +38,7 @@ async def transmit_data(file_to_send: str, num_of_streams: int):
     conn = QUIC_CONNECTION()
     conn.connect_to(LOCAL_ADDRESS, TARGET_PORT)
 
-    with open(FILE_TO_SEND, "rb") as file:
+    with open(file_to_send, "rb") as file:
         content = file.read()
 
     # num_of_streams = int(input("Enter the desired number of streams: "))
