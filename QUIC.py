@@ -66,29 +66,45 @@ class QUIC_CONNECTION:
         self.host_address = host
         self.port = port
 
+        # Create a packet of type SYN (synchronize) to initiate the connection
         connect_packet = QUIC_PACKET(FLAGS.SYN)  # create a SYN type packet
+
+        # Send the SYN packet to the specified host and port using a socket
         self.sock.sendto(connect_packet.serialize_data(), (self.host_address, self.port))
 
+        # Wait to receive data from the server
         received_data, address = self.sock.recvfrom(QUIC_PACKET.Max_size)
+
+        # Deserialize the received data into a QUIC_PACKET object
         received_packet = QUIC_PACKET.deserialize_data(received_data)[0]
 
+        # Check if the received packet has a SYN_ACK flag, which indicates that the server acknowledged the connection request
         if received_packet.packet_flag == FLAGS.SYN_ACK:
             print("GOT SYN_ACK FROM THE SERVER")
         else:
             raise Exception("Connection failed")
 
     async def send_data(self, list_of_files: List[bytes]) -> None:
+
+        # Store each file in the out_streams dictionary with a unique index as the key
         for i, file in enumerate(list_of_files):
             self.out_streams[i + 1] = file
 
+        # Asynchronously send the data from all streams to the server
         await self.send_to_streams()
         print("Data sent successfully")
+
+        # Clear the out_streams dictionary to free memory or prepare for new data
         self.out_streams.clear()
+
+        # Create a packet signaling the end of data transmission using the END_OF_DATA flag
         final_packet = QUIC_PACKET(FLAGS.END_OF_DATA)
+
+        # Send the end-of-data packet to the server to signal the completion of data transmission
         self.sock.sendto(final_packet.serialize_data(), (self.host_address, self.port))
 
     async def send_to_streams(self) -> None:
-
+        # Use asyncio.gather to run the `send_stream_data` coroutine for each stream concurrently
         await asyncio.gather(*(self.send_stream_data(stream_id) for stream_id in self.out_streams))
 
     async def send_stream_data(self, stream_id: int) -> None:
@@ -201,25 +217,36 @@ class QUIC_CONNECTION:
 
 
     def print_stats(self) -> None:
-        print("********** Overall Connection Statistics **********\n")
+
+        """
+         Prints the overall connection statistics and per-stream statistics, including the total bytes, packets,
+         and average transmission rates per second for both the overall connection and individual streams.
+
+         """
 
         # Overall statistics
-        total_bytes = self.connection_stats[OVERALL_DATA].total_bytes_amount
-        total_packets = self.connection_stats[OVERALL_DATA].packets_amount
-        total_time = self.connection_stats[OVERALL_DATA].time
+        print("********** Overall Connection Statistics **********\n")
 
+        # Gather overall statistics for all connections
+        total_bytes = self.connection_stats[OVERALL_DATA].total_bytes_amount  # Total bytes transferred in the connection
+        total_packets = self.connection_stats[OVERALL_DATA].packets_amount # Total number of packets transferred
+        total_time = self.connection_stats[OVERALL_DATA].time  # Total time for the connection in seconds
+
+        # Calculate the average bytes per second and packets per second for the overall connection
         overall_avg_bytes_per_sec = total_bytes / total_time
         overall_avg_packets_per_sec = total_packets / total_time
 
         print(f"Overall average bytes per second: {overall_avg_bytes_per_sec:.2f} bytes/sec")
         print(f"Overall average packets per second: {overall_avg_packets_per_sec:.2f} packets/sec\n")
 
-        # Per stream statistics
+        # Iterate over each stream's statistics and print details
         for stream_id, stats in self.streams_stats.items():
-            stream_total_bytes = stats.total_bytes_amount
-            stream_total_packets = stats.packets_amount
-            stream_time = stats.time
+            # Retrieve stream-specific statistics
+            stream_total_bytes = stats.total_bytes_amount # Total bytes transferred in the stream
+            stream_total_packets = stats.packets_amount  # Total number of packets transferred in the stream
+            stream_time = stats.time  # Total time for the stream in seconds
 
+            # Calculate the average bytes per second and packets per second for the stream
             avg_bytes_per_sec = stream_total_bytes / stream_time
             avg_packets_per_sec = stream_total_packets / stream_time
 
@@ -236,12 +263,29 @@ class QUIC_CONNECTION:
     # will be used when we get FIN packet.
     def terminate_connection(self) -> None:
 
+        """
+        Terminates the connection when a FIN (Finish) packet is received.
+        This method performs cleanup by closing the socket and marking the connection as closed.
+        """
+
         print(f"Got FIN packet, terminating connection")
         self.sock.close()
         self.is_closed = True
 
     # send FIN packet to the other side.
+
     def end_communication(self):
+
+        """
+
+        Sends a FIN (Finish) packet to the other side to signal the end of communication,
+        and then terminates the local connection.
+
+        This method first checks if the connection is already closed. If not, it sends a FIN packet
+        to signal that no more data will be sent and then calls `terminate_connection` to clean up the connection.
+
+        """
+
         if self.is_closed:
             return
 
@@ -266,14 +310,40 @@ class QUIC_PACKET:
     MAX_DATA_SIZE = Max_size - HEADER_LENGTH
 
     def __init__(self, flag):
+
+        """
+            Initializes a QUIC_PACKET instance.
+
+            Args:
+                flag (int): A flag indicating the type or purpose of the packet. This flag is assigned to `self.packet_flag`.
+
+            Attributes:
+                packet_ID (int): A unique identifier for the packet, incremented for each new instance.
+                packet_flag (int): The flag indicating the type of packet (e.g., SYN, ACK, FIN).
+                packet_data (bytearray): A mutable sequence of bytes used to store the packet's data.
+
+            Returns:
+                None
+            """
+
+        # Increment the global packet ID counter to ensure unique IDs for each packet
         QUIC_PACKET.packet_id_counter += 1
         self.packet_ID = QUIC_PACKET.packet_id_counter
         self.packet_flag = flag
+
+        # Initialize packet_data as an empty bytearray for storing data
         self.packet_data = bytearray()  # using bytearray because it is mutable and can be modified
 
     @classmethod
     def deserialize_data(cls, data: bytes) -> Tuple['QUIC_PACKET', List['QUIC_FRAME']]:
 
+        """
+        Deserializes a byte sequence into a QUIC_PACKET and its associated QUIC_FRAME objects.
+
+        This method takes a byte sequence, extracts the packet header, and deserializes it into
+        a QUIC_PACKET instance. It also processes the remaining data to extract QUIC_FRAME objects.
+
+        """
         packet_header = struct.unpack('!BIQ', data[:cls.HEADER_LENGTH])
         flag, packet_id, data_size = packet_header
         packet = QUIC_PACKET(flag)
@@ -295,10 +365,26 @@ class QUIC_PACKET:
         return packet, packet_frames
 
     def serialize_data(self) -> bytes:
+        """
+          Serializes the QUIC_PACKET instance into a byte sequence for transmission or storage.
+
+          This method converts the packet's header and data into a byte sequence that can be easily sent over a network
+          or stored in a file. The header includes the packet flag, packet ID, and the size of the data. The data itself
+          is appended after the header.
+          """
         packet_header = struct.pack('!BIQ', self.packet_flag, self.packet_ID, len(self.packet_data))
         return packet_header + self.packet_data
 
     def link_frame(self, stream_id: int, position_in_stream: int, data: bytes):
+        """
+           Appends a QUIC_FRAME to the packet's data.
+
+           This method creates a frame with the given stream ID, position within the stream, and data, and then appends
+           this frame to the packet's data. The method checks if the total packet data size exceeds the maximum allowed
+           size and raises an exception if it does.
+
+           """
+
         frame_to_link = struct.pack('!IIQ', stream_id, position_in_stream, len(data)) + data
         if len(self.packet_data) + len(frame_to_link) > QUIC_PACKET.MAX_DATA_SIZE:
             raise Exception("Frame size is too large")
@@ -306,6 +392,13 @@ class QUIC_PACKET:
 
 
 class QUIC_FRAME:
+    """
+    Represents a frame in a QUIC packet.
+
+    A QUIC frame consists of a stream ID, a position within the stream, and the actual data of the frame. 
+    This class provides the attributes to store these components and a method to get the length of the frame's data.
+
+    """
 
     def __init__(self, stream_id: int, position_in_stream: int, data: bytes):
         self.stream_id = stream_id
