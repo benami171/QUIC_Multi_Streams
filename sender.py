@@ -23,12 +23,13 @@
 
 import asyncio
 from QUIC import QUIC_CONNECTION
+from QUIC_TEST import FILE_TO_SEND
 
 LOCAL_ADDRESS = '127.0.0.1'
 TARGET_PORT = 9191
 
 
-async def transmit_data():
+async def transmit_data(file_to_send: str, num_of_streams: int):
     """
     This method is used to send data to the receiver. The data is read from a file and sent to the receiver.
     The method is defined as an asynchronous method to allow for the use of the await keyword,
@@ -38,10 +39,10 @@ async def transmit_data():
     conn = QUIC_CONNECTION()
     conn.connect_to(LOCAL_ADDRESS, TARGET_PORT)
 
-    with open("random_data_file.txt", "rb") as file:
+    with open(FILE_TO_SEND, "rb") as file:
         content = file.read()
 
-    num_of_streams = int(input("Enter the desired number of streams: "))
+    # num_of_streams = int(input("Enter the desired number of streams: "))
     payload = [content] * num_of_streams
     await conn.send_data(payload)
 
@@ -51,7 +52,7 @@ async def transmit_data():
 
 
 def main():
-    asyncio.run(transmit_data())
+    asyncio.run(transmit_data(FILE_TO_SEND, 3))
 
 
 if __name__ == '__main__':

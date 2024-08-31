@@ -260,7 +260,7 @@ class Stats:
 
 class QUIC_PACKET:
     packet_id_counter = 0
-    Max_size = 20000
+    Max_size = 9000
     HEADER_LENGTH = struct.calcsize('!BIQ')
     FRAME_LENGTH = struct.calcsize('!IIQ')
     MAX_DATA_SIZE = Max_size - HEADER_LENGTH

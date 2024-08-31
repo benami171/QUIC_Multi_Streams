@@ -24,7 +24,7 @@ BIND_ADDRESS = '0.0.0.0'
 LISTEN_PORT = 9191
 
 
-async def accept_data():
+async def accept_data() -> None:
     conn = QUIC_CONNECTION()
     conn.listen_incoming_connections(BIND_ADDRESS, LISTEN_PORT)
 
