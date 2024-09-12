@@ -5,9 +5,7 @@ import struct
 import time
 import asyncio
 from enum import IntEnum
-from random import randint
 from typing import Dict, List, Tuple
-from dataclasses import dataclass
 
 OVERALL_DATA = 0  # The position in the stats dictionary for overall data that was sent/received
 
@@ -262,7 +260,6 @@ class QUIC_CONNECTION:
 
     # will be used when we get FIN packet.
     def terminate_connection(self) -> None:
-
         """
         Terminates the connection when a FIN (Finish) packet is received.
         This method performs cleanup by closing the socket and marking the connection as closed.
@@ -275,15 +272,12 @@ class QUIC_CONNECTION:
     # send FIN packet to the other side.
 
     def end_communication(self):
-
         """
-
         Sends a FIN (Finish) packet to the other side to signal the end of communication,
         and then terminates the local connection.
 
         This method first checks if the connection is already closed. If not, it sends a FIN packet
         to signal that no more data will be sent and then calls `terminate_connection` to clean up the connection.
-
         """
 
         if self.is_closed:
