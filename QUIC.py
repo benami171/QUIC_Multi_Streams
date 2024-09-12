@@ -313,7 +313,6 @@ class QUIC_PACKET:
                 packet_ID (int): A unique identifier for the packet, incremented for each new instance.
                 packet_flag (int): The flag indicating the type of packet (e.g., SYN, ACK, FIN).
                 packet_data (bytearray): A mutable sequence of bytes used to store the packet's data.
-
             Returns:
                 None
             """
