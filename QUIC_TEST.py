@@ -15,7 +15,7 @@ class FileTransferManager:
     async def handle_incoming_data():
         # Create a new QUIC connection and listen for incoming connections
         connection = QUIC_CONNECTION()
-        connection.listen_incoming_connections(*SERVER)
+        connection.listen_to(*SERVER)
         received_data = None
 
         # Continuously receive data until no more data is incoming

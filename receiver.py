@@ -7,7 +7,7 @@ LISTEN_PORT = 9191
 
 async def accept_data() -> None:
     conn = QUIC_CONNECTION()
-    conn.listen_incoming_connections(BIND_ADDRESS, LISTEN_PORT)
+    conn.listen_to(BIND_ADDRESS, LISTEN_PORT)
 
     while True:
         data_batch = await conn.receive_data()

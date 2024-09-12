@@ -42,7 +42,7 @@ class QUIC_CONNECTION:
         self.streams_stats: Dict[int, Stats] = {}
         self.connection_stats: Dict[int, Stats] = {}
 
-    def listen_incoming_connections(self, host: str, port: int):
+    def listen_to(self, host: str, port: int):
         """Listen for incoming connections."""
         print(f"Listening for incoming connections on {host}:{port}")
         self.host_address = host
