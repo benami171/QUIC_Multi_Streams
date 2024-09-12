@@ -9,6 +9,7 @@ SOURCE_FILE = "random_data_file.txt"
 # Number of streams to be used for the transfer
 STREAM_COUNT = 3
 
+
 class FileTransferManager:
     @staticmethod
     async def handle_incoming_data():
@@ -71,6 +72,7 @@ def execute_async(coroutine):
         # Close the event loop
         loop.close()
 
+
 def simulate_transfer():
     def initiate_receiver():
         # Execute the handle_incoming_data coroutine
@@ -91,6 +93,7 @@ def simulate_transfer():
     # Wait for both threads to complete
     receive_thread.join()
     send_thread.join()
+
 
 if __name__ == '__main__':
     # Start the file transfer simulation

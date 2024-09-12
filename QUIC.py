@@ -120,12 +120,11 @@ class QUIC_CONNECTION:
         # calculate the frame payload size (without the header)
         frame_payload_size = frame_size - QUIC_PACKET.FRAME_LENGTH
         # calculate the number of frames per packet
-        frames_per_packet = math.floor(QUIC_PACKET.MAX_DATA_SIZE/ frame_size)
+        frames_per_packet = math.floor(QUIC_PACKET.MAX_DATA_SIZE / frame_size)
         needed_frames_amount = math.ceil(len(data_from_stream) / frame_payload_size)
         packet_payload_size = frames_per_packet * frame_payload_size
         needed_packets_amount = math.ceil(needed_frames_amount / frames_per_packet)
         current_frame = 0
-
 
         for i in range(needed_packets_amount):
             #
@@ -141,7 +140,8 @@ class QUIC_CONNECTION:
             for frame_offset in range(frames_per_packet):
                 start_index = bytes_added_until_now + frame_offset * frame_payload_size
                 if current_frame == needed_frames_amount - 1:
-                    end_index = start_index + min((packet_payload_size - (frame_offset-1) * frame_payload_size), frame_payload_size)
+                    end_index = start_index + min((packet_payload_size - (frame_offset - 1) * frame_payload_size),
+                                                  frame_payload_size)
                 else:
                     end_index = start_index + frame_payload_size
                 awaiting_data = data_from_stream[start_index:end_index]
@@ -163,12 +163,11 @@ class QUIC_CONNECTION:
             received_data, address = self.sock.recvfrom(QUIC_PACKET.Max_size)
             received_packet, received_frames = QUIC_PACKET.deserialize_data(received_data)
 
-            if received_packet.packet_flag not in (FLAGS.SYN ,FLAGS.ACK,
-                                                    FLAGS.SYN_ACK, FLAGS.FIN):
+            if received_packet.packet_flag not in (FLAGS.SYN, FLAGS.ACK,
+                                                   FLAGS.SYN_ACK, FLAGS.FIN):
 
                 frames_received_counter += len(received_frames)
                 # GOT THE FIRST PACKET OF THE SPECIFIC STREAM, START MEASURING TIME
-
 
                 if received_packet.packet_flag == FLAGS.FIRST_PACKET:
                     if received_frames[0].stream_id not in self.streams_stats:
@@ -213,7 +212,6 @@ class QUIC_CONNECTION:
         self.in_streams.clear()
         return received_files
 
-
     def print_stats(self) -> None:
 
         """
@@ -226,8 +224,9 @@ class QUIC_CONNECTION:
         print("********** Overall Connection Statistics **********\n")
 
         # Gather overall statistics for all connections
-        total_bytes = self.connection_stats[OVERALL_DATA].total_bytes_amount  # Total bytes transferred in the connection
-        total_packets = self.connection_stats[OVERALL_DATA].packets_amount # Total number of packets transferred
+        total_bytes = self.connection_stats[
+            OVERALL_DATA].total_bytes_amount  # Total bytes transferred in the connection
+        total_packets = self.connection_stats[OVERALL_DATA].packets_amount  # Total number of packets transferred
         total_time = self.connection_stats[OVERALL_DATA].time  # Total time for the connection in seconds
 
         # Calculate the average bytes per second and packets per second for the overall connection
@@ -240,7 +239,7 @@ class QUIC_CONNECTION:
         # Iterate over each stream's statistics and print details
         for stream_id, stats in self.streams_stats.items():
             # Retrieve stream-specific statistics
-            stream_total_bytes = stats.total_bytes_amount # Total bytes transferred in the stream
+            stream_total_bytes = stats.total_bytes_amount  # Total bytes transferred in the stream
             stream_total_packets = stats.packets_amount  # Total number of packets transferred in the stream
             stream_time = stats.time  # Total time for the stream in seconds
 
@@ -256,7 +255,6 @@ class QUIC_CONNECTION:
             print()
 
         print("********** End of Statistics **********")
-
 
     # will be used when we get FIN packet.
     def terminate_connection(self) -> None:
@@ -348,7 +346,8 @@ class QUIC_PACKET:
         frame_position_offset = 0
         while frame_position_offset < len(packet.packet_data):
             frame_header = struct.unpack('!IIQ',
-                        packet.packet_data[frame_position_offset:frame_position_offset + cls.FRAME_LENGTH])
+                                         packet.packet_data[
+                                         frame_position_offset:frame_position_offset + cls.FRAME_LENGTH])
             stream_id, position_in_stream, frame_size = frame_header
             frame_position_offset += cls.FRAME_LENGTH  # skip to the next frame by frame length
             frame_data = packet.packet_data[frame_position_offset:frame_position_offset + frame_size]

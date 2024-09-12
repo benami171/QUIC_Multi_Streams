@@ -4,6 +4,7 @@ from QUIC import QUIC_CONNECTION
 BIND_ADDRESS = '0.0.0.0'
 LISTEN_PORT = 9191
 
+
 async def accept_data() -> None:
     conn = QUIC_CONNECTION()
     conn.listen_incoming_connections(BIND_ADDRESS, LISTEN_PORT)
@@ -23,6 +24,6 @@ async def accept_data() -> None:
 
     conn.end_communication()
 
+
 if __name__ == '__main__':
     asyncio.run(accept_data())
-
