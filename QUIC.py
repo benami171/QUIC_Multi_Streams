@@ -7,6 +7,8 @@ import asyncio
 from enum import IntEnum
 from typing import Dict, List, Tuple
 
+
+
 OVERALL_DATA = 0  # The position in the stats dictionary for overall data that was sent/received
 
 
