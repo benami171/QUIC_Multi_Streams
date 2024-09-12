@@ -23,11 +23,6 @@ async def accept_data() -> None:
 
     conn.end_communication()
 
-
-def main():
-    asyncio.run(accept_data())
-
-
 if __name__ == '__main__':
-    main()
+    asyncio.run(accept_data())
 

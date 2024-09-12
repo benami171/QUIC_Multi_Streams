@@ -26,10 +26,5 @@ async def transmit_data(file_to_send: str, num_of_streams: int):
     await asyncio.sleep(0.01)
     conn.end_communication()
 
-
-def main():
-    asyncio.run(transmit_data(FILE_TO_SEND, 3))
-
-
 if __name__ == '__main__':
-    main()
+    asyncio.run(transmit_data(FILE_TO_SEND, 3))
