@@ -79,6 +79,11 @@ It will run the test which simulates a connection between a sender and a receive
 
 2. Ensure you have Python 3.7+ installed.
 
+## Authors
+- [Gal Ben Ami](https://github.com/benami171)
+- [Elroei Carmel](https://github.com/ElroiCarmel)
+- [Aharon Basous](https://github.com/Aharonba)
+- [Gidi Rabi](https://github.com/GidiRabi)
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
