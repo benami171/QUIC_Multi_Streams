@@ -265,9 +265,6 @@ class QUIC_CONNECTION:
 
     def end_communication(self):
         """
-        Sends a FIN (Finish) packet to the other side to signal the end of communication,
-        and then terminates the local connection.
-
         This method first checks if the connection is already closed. If not, it sends a FIN packet
         to signal that no more data will be sent and then calls `terminate_connection` to clean up the connection.
         """
