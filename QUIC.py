@@ -155,7 +155,6 @@ class QUIC_CONNECTION:
         1. receive data from the socket and divide it into packet and frames
         2. if the packet is not SYN/ACK/SYN_ACK/FIN start measuring time
         3. if the stream_id is not in the streams stats dictionary,add it
-        :return:
         """
         frames_received_counter = 0
         while True:
