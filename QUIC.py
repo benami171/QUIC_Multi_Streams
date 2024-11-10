@@ -215,12 +215,8 @@ class QUIC_CONNECTION:
         """
          Prints the overall connection statistics and per-stream statistics, including the total bytes, packets,
          and average transmission rates per second for both the overall connection and individual streams.
-
          """
-
-        # Overall statistics
         print("********** Overall Connection Statistics **********\n")
-
         # Gather overall statistics for all connections
         total_bytes = self.connection_stats[
             OVERALL_DATA].total_bytes_amount  # Total bytes transferred in the connection
